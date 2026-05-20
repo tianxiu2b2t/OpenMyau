@@ -83,6 +83,9 @@ jobs:
       - name: Build dev (shadowJar)
         run: ./gradlew shadowJar --no-daemon
 
+      - name: list
+        run: ls -a .
+
       # ---------- 构建 Release 版本（已混淆） ----------
       - name: Build release (remapJar)
         run: ./gradlew remapJar --no-daemon
