@@ -78,14 +78,22 @@ jobs:
             **/prebundled-jars
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
-
+      - name: Prepare
+        run: mkdir target && mkdir target/shadowJar && mkdir target/remapJar
+        
       # ---------- 构建 Dev 版本（未混淆，含依赖） ----------
       - name: Build dev (shadowJar)
         run: ./gradlew shadowJar --no-daemon
 
+      - name: Prepare shadowJar
+        run: cp build/libs/*.jar target/shadowJar/
+
       # ---------- 构建 Release 版本（已混淆） ----------
       - name: Build release (remapJar)
         run: ./gradlew remapJar --no-daemon
+
+      - name: Prepare remapJar
+        run: cp build/libs/*.jar target/remapJar/
 
       # ---------- 准备两个产物 ----------
       # - name: Prepare artifacts
@@ -110,12 +118,9 @@ jobs:
       #     echo "Release artifact:"
       #     ls -la release-artifact/
 
-      - name: list
-        run: ls -al run/
-
       # ---------- 上传 Dev 版本 ----------
       - name: Upload dev JAR
         uses: actions/upload-artifact@v4
         with:
           name: mod-dev
-          path: run/**/*.jar
+          path: target/**/*.jar
