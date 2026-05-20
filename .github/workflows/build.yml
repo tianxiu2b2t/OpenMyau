@@ -83,46 +83,36 @@ jobs:
       - name: Build dev (shadowJar)
         run: ./gradlew shadowJar --no-daemon
 
-      - name: list
-        run: ls -a .
-
       # ---------- 构建 Release 版本（已混淆） ----------
       - name: Build release (remapJar)
         run: ./gradlew remapJar --no-daemon
 
       # ---------- 准备两个产物 ----------
-      - name: Prepare artifacts
-        run: |
-          mkdir -p dev-artifact release-artifact
-          # shadowJar 输出位置（根据 build.gradle.kts 配置）
-          # 路径: build/intermediates/Myau-non-obfuscated-with-deps.jar
-          if [ -f "build/intermediates/Myau-non-obfuscated-with-deps.jar" ]; then
-            cp build/intermediates/Myau-non-obfuscated-with-deps.jar dev-artifact/Myau-dev.jar
-          else
-            echo "Warning: shadowJar output not found"
-          fi
-          # remapJar 输出位置（根据 build.gradle.kts 配置）
-          # 路径: build/libs/Myau.jar
-          if [ -f "build/libs/Myau.jar" ]; then
-            cp build/libs/Myau.jar release-artifact/Myau-release.jar
-          else
-            echo "Warning: remapJar output not found"
-          fi
-          echo "Dev artifact:"
-          ls -la dev-artifact/
-          echo "Release artifact:"
-          ls -la release-artifact/
+      # - name: Prepare artifacts
+      #   run: |
+      #     mkdir -p dev-artifact release-artifact
+      #     # shadowJar 输出位置（根据 build.gradle.kts 配置）
+      #     # 路径: build/intermediates/Myau-non-obfuscated-with-deps.jar
+      #     if [ -f "build/intermediates/Myau-non-obfuscated-with-deps.jar" ]; then
+      #       cp build/intermediates/Myau-non-obfuscated-with-deps.jar dev-artifact/Myau-dev.jar
+      #     else
+      #       echo "Warning: shadowJar output not found"
+      #     fi
+      #     # remapJar 输出位置（根据 build.gradle.kts 配置）
+      #     # 路径: build/libs/Myau.jar
+      #     if [ -f "build/libs/Myau.jar" ]; then
+      #       cp build/libs/Myau.jar release-artifact/Myau-release.jar
+      #     else
+      #       echo "Warning: remapJar output not found"
+      #     fi
+      #     echo "Dev artifact:"
+      #     ls -la dev-artifact/
+      #     echo "Release artifact:"
+      #     ls -la release-artifact/
 
       # ---------- 上传 Dev 版本 ----------
       - name: Upload dev JAR
         uses: actions/upload-artifact@v4
         with:
           name: mod-dev
-          path: dev-artifact/
-
-      # ---------- 上传 Release 版本 ----------
-      - name: Upload release JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: mod-release
-          path: release-artifact/
+          path: run/**/*.jar
