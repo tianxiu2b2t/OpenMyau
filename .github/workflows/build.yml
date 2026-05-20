@@ -82,7 +82,7 @@ jobs:
         run: mkdir target
 
       - name: Build release
-        run: ./gradlew build --no-daemon
+        run: ./gradlew clean build --no-daemon
 
       - name: Prepare remapJar
         run: cp build/libs/*.jar target/
