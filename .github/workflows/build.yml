@@ -1,0 +1,125 @@
+name: Build Java Mod (Dev + Release)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:   # 允许手动触发
+
+jobs:
+  build-java:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ---------- 设置 JDK 17（用于运行 Gradle） ----------
+      - name: Set up JDK 17
+        id: jdk17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      # ---------- 安装 JDK 8（用于编译，不覆盖 JAVA_HOME） ----------
+      - name: Set up JDK 8
+        id: jdk8
+        uses: actions/setup-java@v4
+        with:
+          java-version: 8
+          distribution: temurin
+
+      # ---------- 设置环境变量（Gradle 运行使用 JDK 17，编译使用 toolchain） ----------
+      - name: Set JAVA_HOME and JAVA8_HOME
+        run: |
+          echo "JAVA_HOME=${{ steps.jdk17.outputs.path }}" >> $GITHUB_ENV
+          echo "JAVA8_HOME=${{ steps.jdk8.outputs.path }}" >> $GITHUB_ENV
+
+      - name: Verify Java versions
+        run: |
+          echo "JAVA_HOME: $JAVA_HOME"
+          echo "JAVA8_HOME: $JAVA8_HOME"
+          java -version
+          "$JAVA8_HOME/bin/java" -version
+
+      # ---------- 确保 Gradle Wrapper 存在并可用 ----------
+      - name: Check Gradle Wrapper
+        id: check_wrapper
+        run: |
+          if [ ! -f "gradlew" ] || [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
+            echo "wrapper_missing=true" >> $GITHUB_OUTPUT
+          else
+            echo "wrapper_missing=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install Gradle and generate wrapper
+        if: steps.check_wrapper.outputs.wrapper_missing == 'true'
+        run: |
+          wget https://services.gradle.org/distributions/gradle-8.5-bin.zip
+          unzip -q gradle-8.5-bin.zip
+          export PATH=$PWD/gradle-8.5/bin:$PATH
+          gradle wrapper
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Verify wrapper
+        run: ./gradlew --version
+
+      # ---------- Gradle 缓存 ----------
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            **/loom-cache
+            **/prebundled-jars
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      # ---------- 构建 Dev 版本（未混淆，含依赖） ----------
+      - name: Build dev (shadowJar)
+        run: ./gradlew shadowJar --no-daemon
+
+      # ---------- 构建 Release 版本（已混淆） ----------
+      - name: Build release (remapJar)
+        run: ./gradlew remapJar --no-daemon
+
+      # ---------- 准备两个产物 ----------
+      - name: Prepare artifacts
+        run: |
+          mkdir -p dev-artifact release-artifact
+          # shadowJar 输出位置（根据 build.gradle.kts 配置）
+          # 路径: build/intermediates/Myau-non-obfuscated-with-deps.jar
+          if [ -f "build/intermediates/Myau-non-obfuscated-with-deps.jar" ]; then
+            cp build/intermediates/Myau-non-obfuscated-with-deps.jar dev-artifact/Myau-dev.jar
+          else
+            echo "Warning: shadowJar output not found"
+          fi
+          # remapJar 输出位置（根据 build.gradle.kts 配置）
+          # 路径: build/libs/Myau.jar
+          if [ -f "build/libs/Myau.jar" ]; then
+            cp build/libs/Myau.jar release-artifact/Myau-release.jar
+          else
+            echo "Warning: remapJar output not found"
+          fi
+          echo "Dev artifact:"
+          ls -la dev-artifact/
+          echo "Release artifact:"
+          ls -la release-artifact/
+
+      # ---------- 上传 Dev 版本 ----------
+      - name: Upload dev JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: mod-dev
+          path: dev-artifact/
+
+      # ---------- 上传 Release 版本 ----------
+      - name: Upload release JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: mod-release
+          path: release-artifact/
