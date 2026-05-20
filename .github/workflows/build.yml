@@ -110,6 +110,9 @@ jobs:
       #     echo "Release artifact:"
       #     ls -la release-artifact/
 
+      - name: list
+        run: ls -al run/
+
       # ---------- 上传 Dev 版本 ----------
       - name: Upload dev JAR
         uses: actions/upload-artifact@v4
